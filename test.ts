@@ -6,6 +6,10 @@ import {
   serveFile,
 } from "https://deno.land/std/http/file_server.ts";
 
+import {
+  browse,
+} from "https://deno.land/x/web@0.1.0/browser/mod.ts";
+
 const ignore = [
   "tests/std_env_args_none.wasm",
   "tests/std_env_args_some.wasm",
@@ -74,14 +78,10 @@ for await (const entry of Deno.readDir("tests")) {
 
 const server = serve({ port: 8080 });
 
-const browser = await Deno.run({
-  cmd: [
-    chromePath(),
-    ...chromeFlags(),
-    "http://localhost:8080",
-  ],
-  stdout: "null",
-  stderr: "null",
+const browser = browse({
+  url: "http://localhost:8080",
+  headless: true,
+  browser: "chrome",
 });
 
 const result: {
@@ -303,38 +303,4 @@ async function serveRunner(manifest: unknown, ignore: string[]) {
     headers,
     body,
   };
-}
-
-function chromePath() {
-  switch (Deno.build.os) {
-    case "darwin":
-      return "/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome";
-
-    case "linux":
-      return "/usr/bin/google-chrome";
-
-    case "windows":
-      return "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe";
-  }
-}
-
-function chromeFlags(): string[] {
-  return [
-    "--headless",
-    "--remote-debugging-port=9292",
-    "--disable-features=TranslateUI",
-    "--disable-extensions",
-    "--disable-component-extensions-with-background-pages",
-    "--disable-background-networking",
-    "--disable-sync",
-    "--metrics-recording-only",
-    "--disable-default-apps",
-    "--mute-audio",
-    "--no-default-browser-check",
-    "--no-first-run",
-    "--disable-backgrounding-occluded-windows",
-    "--disable-renderer-backgrounding",
-    "--disable-background-timer-throttling",
-    "--force-fieldtrials=*BackgroundTracing/default/",
-  ];
 }
