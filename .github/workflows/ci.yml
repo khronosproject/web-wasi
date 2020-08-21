@@ -12,6 +12,8 @@ jobs:
     steps:
     - name: Check out repository
       uses: actions/checkout@v2
+      with:
+        submodules: true
 
     - name: Set up Deno
       uses: denolib/setup-deno@v2
@@ -19,3 +21,7 @@ jobs:
     - name: build
       run: |
         deno run --allow-all --unstable build.ts
+
+    - name: Test
+      run: |
+        deno run --allow-all --unstable test.ts
