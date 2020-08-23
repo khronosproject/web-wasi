@@ -212,14 +212,18 @@ function syscall(target: Function): Function {
 }
 
 export interface ContextOptions {
+  memory?: WebAssembly.Memory;
 }
 
 export type ContextExports = Record<string, Function>;
 
 export default class Context {
+  memory: WebAssembly.Memory;
   exports: ContextExports;
 
   constructor(options: ContextOptions) {
+    this.memory = options.memory!;
+
     this.exports = {
       args_get: syscall((
         argv_ptr: number,
