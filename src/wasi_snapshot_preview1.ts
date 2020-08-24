@@ -276,7 +276,7 @@ export default class Context {
         environ_ptr: number,
         environ_buf_ptr: number,
       ): number => {
-	const entries = Object.entries(this.env);
+        const entries = Object.entries(this.env);
         const text_encoder = new TextEncoder();
         const memory_data = new Uint8Array(this.memory.buffer);
         const memory_view = new DataView(this.memory.buffer);
