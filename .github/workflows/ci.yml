@@ -25,3 +25,16 @@ jobs:
     - name: Test
       run: |
         deno run --allow-all --unstable test.ts
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+
+    - name: Set up Deno
+      uses: denolib/setup-deno@v2
+
+    - name: Lint
+      run: |
+        deno lint --unstable
