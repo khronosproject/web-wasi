@@ -1,8 +1,6 @@
-try {
-  await Deno.mkdir("lib");
-} catch (err) {
-  // no-op
-}
+import { ensureDir } from "https://deno.land/std/fs/mod.ts";
+
+await ensureDir("lib");
 
 const [diagnostics, records] = await Deno.compile(
   "src/wasi_snapshot_preview1.ts",
