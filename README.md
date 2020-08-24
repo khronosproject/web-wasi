@@ -6,8 +6,8 @@ This module provides an implementation of the WebAssembly System Interface for W
 
 ### wasi_snapshot_preview1
 
-- [ ] args_get
-- [ ] args_sizes_get
+- [x] args_get
+- [x] args_sizes_get
 - [x] environ_get
 - [x] environ_sizes_get
 - [ ] clock_res_get
