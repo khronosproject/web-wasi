@@ -13,8 +13,6 @@ import {
 const ignore = [
   "tests/std_env_args_none.wasm",
   "tests/std_env_args_some.wasm",
-  "tests/std_env_vars_none.wasm",
-  "tests/std_env_vars_some.wasm",
   "tests/std_fs_create_dir_absolute.wasm",
   "tests/std_fs_create_dir_relative.wasm",
   "tests/std_fs_file_create_absolute.wasm",
@@ -282,6 +280,7 @@ async function serveRunner(manifest: unknown, ignore: string[]) {
 
       try {
 	const context = new Context({
+          env: options.env,
 	});
 
 	const request = await fetch(pathname);
