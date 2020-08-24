@@ -8,8 +8,8 @@ This module provides an implementation of the WebAssembly System Interface for W
 
 - [ ] args_get
 - [ ] args_sizes_get
-- [ ] environ_get
-- [ ] environ_sizes_get
+- [x] environ_get
+- [x] environ_sizes_get
 - [ ] clock_res_get
 - [ ] clock_time_get
 - [ ] fd_advise

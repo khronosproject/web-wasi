@@ -212,16 +212,19 @@ function syscall(target: Function): Function {
 }
 
 export interface ContextOptions {
+  env?: { [key: string]: string | undefined };
   memory?: WebAssembly.Memory;
 }
 
 export type ContextExports = Record<string, Function>;
 
 export default class Context {
+  env: { [key: string]: string | undefined };
   memory: WebAssembly.Memory;
   exports: ContextExports;
 
   constructor(options: ContextOptions) {
+    this.env = options.env ?? {};
     this.memory = options.memory!;
 
     this.exports = {
@@ -243,14 +246,41 @@ export default class Context {
         environ_ptr: number,
         environ_buf_ptr: number,
       ): number => {
-        return ERRNO_NOSYS;
+	const entries = Object.entries(this.env);
+        const text_encoder = new TextEncoder();
+        const memory_data = new Uint8Array(this.memory.buffer);
+        const memory_view = new DataView(this.memory.buffer);
+
+        for (const [key, value] of entries) {
+          memory_view.setUint32(environ_ptr, environ_buf_ptr, true);
+          environ_ptr += 4;
+
+          const data = text_encoder.encode(`${key}=${value}\0`);
+          memory_data.set(data, environ_buf_ptr);
+          environ_buf_ptr += data.length;
+        }
+
+        return ERRNO_SUCCESS;
       }),
 
       environ_sizes_get: syscall((
         environc_out: number,
         environ_buf_size_out: number,
       ): number => {
-        return ERRNO_NOSYS;
+        const entries = Object.entries(this.env);
+        const text_encoder = new TextEncoder();
+        const memory_view = new DataView(this.memory.buffer);
+
+        memory_view.setUint32(environc_out, entries.length, true);
+        memory_view.setUint32(
+          environ_buf_size_out,
+          entries.reduce((acc, [key, value]) => {
+            return acc + text_encoder.encode(`${key}=${value}\0`).length;
+          }, 0),
+          true,
+        );
+
+        return ERRNO_SUCCESS;
       }),
 
       clock_res_get: syscall((
