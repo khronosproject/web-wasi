@@ -291,6 +291,7 @@ async function serveRunner(manifest: unknown, ignore: string[]) {
 	  wasi_snapshot_preview1: context.exports,
 	});
 
+	context.memory = instance.exports.memory;
 	instance.exports._start();
 	await pass();
       } catch (error) {
