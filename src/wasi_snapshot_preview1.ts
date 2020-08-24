@@ -356,7 +356,7 @@ export default class Context {
         fd: number,
         buf_out: number,
       ): number => {
-        return ERRNO_NOSYS;
+        return ERRNO_BADF;
       }),
 
       fd_prestat_dir_name: syscall((
@@ -364,7 +364,7 @@ export default class Context {
         path_ptr: number,
         path_len: number,
       ): number => {
-        return ERRNO_NOSYS;
+        return ERRNO_BADF;
       }),
 
       fd_pwrite: syscall((
