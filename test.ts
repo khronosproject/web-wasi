@@ -58,7 +58,6 @@ const ignore = [
   "tests/wasi_fd_write_stdout.wasm",
   "tests/wasi_proc_exit_one.wasm",
   "tests/wasi_proc_exit_zero.wasm",
-  "tests/wasi_random_get.wasm",
 ];
 
 const manifest: { [key: string]: unknown } = {};

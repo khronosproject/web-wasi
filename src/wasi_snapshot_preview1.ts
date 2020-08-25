@@ -627,7 +627,14 @@ export default class Context {
         buf_ptr: number,
         buf_len: number,
       ): number => {
-        return ERRNO_NOSYS;
+        const memory_slice = new Uint8Array(
+          this.memory.buffer,
+          buf_ptr,
+          buf_len,
+        );
+        crypto.getRandomValues(memory_slice);
+
+        return ERRNO_SUCCESS;
       }),
 
       sock_recv: syscall((
