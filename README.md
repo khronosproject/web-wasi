@@ -47,7 +47,7 @@ This module provides an implementation of the WebAssembly System Interface for W
 - [ ] proc_exit
 - [ ] proc_raise
 - [ ] sched_yield
-- [ ] random_get
+- [x] random_get
 - [ ] sock_recv
 - [ ] sock_send
 - [ ] sock_shutdown
