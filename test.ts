@@ -1,4 +1,8 @@
 import {
+  parse,
+} from "https://deno.land/std/flags/mod.ts";
+
+import {
   serve,
 } from "https://deno.land/std/http/server.ts";
 
@@ -9,6 +13,12 @@ import {
 import {
   browse,
 } from "https://deno.land/x/web@0.2.1/browser.ts";
+
+const options = parse(Deno.args, {
+  default: {
+    browser: "chrome",
+  },
+});
 
 const ignore = [
   "tests/std_fs_create_dir_absolute.wasm",
@@ -76,7 +86,7 @@ const server = serve({ port: 8080 });
 const browser = browse({
   url: "http://localhost:8080",
   headless: true,
-  browser: "chrome",
+  browser: options.browser,
 });
 
 const result: {
