@@ -9,6 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: ["chrome", "firefox"]
+
     steps:
     - name: Check out repository
       uses: actions/checkout@v2
