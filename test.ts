@@ -8,7 +8,7 @@ import {
 
 import {
   browse,
-} from "https://deno.land/x/web@0.1.0/browser/mod.ts";
+} from "https://deno.land/x/web@0.2.1/browser.ts";
 
 const ignore = [
   "tests/std_fs_create_dir_absolute.wasm",
