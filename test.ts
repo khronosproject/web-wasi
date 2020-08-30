@@ -120,42 +120,42 @@ for await (const request of server) {
         break;
       }
 
-      case "/test": {
+      case "/test.json": {
         await request.respond({ body: "" });
         const body = await Deno.readAll(request.body);
+        const message = JSON.parse(new TextDecoder().decode(body));
 
-        await Deno.writeAll(Deno.stderr, new TextEncoder().encode("test "));
-        await Deno.writeAll(Deno.stderr, body);
-        await Deno.writeAll(Deno.stderr, new TextEncoder().encode("..."));
-        break;
-      }
+        if (message.type == "test") {
+          await Deno.writeAll(Deno.stderr, new TextEncoder().encode("test "));
+          await Deno.writeAll(
+            Deno.stderr,
+            new TextEncoder().encode(message.name),
+          );
+          await Deno.writeAll(Deno.stderr, new TextEncoder().encode("..."));
+        }
 
-      case "/pass": {
-        await request.respond({ body: "" });
-        result.passed++;
+        if (message.type == "skip") {
+          result.ignored++;
+          await Deno.writeAll(
+            Deno.stderr,
+            new TextEncoder().encode("ignore\n"),
+          );
+        }
 
-        await Deno.writeAll(Deno.stderr, new TextEncoder().encode("ok\n"));
-        break;
-      }
+        if (message.type == "pass") {
+          result.passed++;
+          await Deno.writeAll(Deno.stderr, new TextEncoder().encode("ok\n"));
+        }
 
-      case "/fail": {
-        await request.respond({ body: "" });
-        const body = await Deno.readAll(request.body);
+        if (message.type == "fail") {
+          result.failed++;
+          result.errors.push(message.error);
+          await Deno.writeAll(
+            Deno.stderr,
+            new TextEncoder().encode("FAILED\n"),
+          );
+        }
 
-        result.errors.push(new TextDecoder().decode(body));
-        result.failed++;
-
-        await Deno.writeAll(Deno.stderr, new TextEncoder().encode("FAILED\n"));
-        break;
-      }
-
-      case "/skip": {
-        await request.respond({ body: "" });
-        const body = await Deno.readAll(request.body);
-
-        result.ignored++;
-
-        await Deno.writeAll(Deno.stderr, new TextEncoder().encode("ignore\n"));
         break;
       }
 
@@ -238,30 +238,10 @@ async function serveRunner(manifest: unknown, ignore: string[]) {
   const manifest = ${JSON.stringify(manifest)};
   const ignore = ${JSON.stringify(ignore)};
 
-  async function test(name) {
-    return fetch("http://localhost:8080/test", {
+  async function post(body) {
+    return fetch("http://localhost:8080/test.json", {
       method: 'POST',
-      body: name,
-    });
-  }
-
-  async function pass() {
-    return fetch("http://localhost:8080/pass", {
-      method: 'POST',
-    });
-  }
-
-  async function fail(error) {
-    return fetch("http://localhost:8080/fail", {
-      method: 'POST',
-      body: error,
-    });
-  }
-
-  async function skip(error) {
-    return fetch("http://localhost:8080/skip", {
-      method: 'POST',
-      body: error,
+      body: JSON.stringify(body),
     });
   }
 
@@ -278,10 +258,17 @@ async function serveRunner(manifest: unknown, ignore: string[]) {
 
     const entries = Object.entries(manifest).sort();
     for (const [pathname, options] of entries) {
-      await test(pathname);
+      await post({
+	type: "test",
+	name: pathname,
+      });
 
       if (ignore.includes(pathname)) {
-        await skip();
+        await post({
+	  type: "skip",
+	  name: pathname,
+	});
+
 	continue;
       }
 
@@ -300,9 +287,17 @@ async function serveRunner(manifest: unknown, ignore: string[]) {
 
 	context.memory = instance.exports.memory;
 	instance.exports._start();
-	await pass();
+
+        await post({
+	  type: "pass",
+	  name: pathname,
+	});
       } catch (error) {
-        await fail(error.stack);
+        await post({
+	  type: "fail",
+	  name: pathname,
+	  error: error.stack,
+	});
       }
     }
   };`;
