@@ -198,6 +198,7 @@ const SDFLAGS_WR = 0x0002;
 
 const PREOPENTYPE_DIR = 0;
 
+// deno-lint-ignore ban-types
 function syscall(target: Function): Function {
   return function (...args: unknown[]): number {
     try {
@@ -217,6 +218,7 @@ export interface ContextOptions {
   memory?: WebAssembly.Memory;
 }
 
+// deno-lint-ignore ban-types
 export type ContextExports = Record<string, Function>;
 
 export default class Context {
