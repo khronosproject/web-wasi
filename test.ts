@@ -250,12 +250,6 @@ async function serveRunner(manifest: unknown, ignore: string[]) {
   };
 
   window.onload = async function() {
-    const result = {
-      passed: 0,
-      failed: 0,
-      errors: [],
-    };
-
     const entries = Object.entries(manifest).sort();
     for (const [pathname, options] of entries) {
       await post({
