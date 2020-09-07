@@ -12,12 +12,13 @@ const [diagnostics, records] = await Deno.compile(
 
 if (diagnostics) {
   for (const diagnostic of diagnostics) {
-    console.error(diagnostics);
+    console.error(diagnostic);
   }
 
   Deno.exit(1);
 }
 
 for (const [filepath, source] of Object.entries(records)) {
+  console.error(filepath, source.length);
   await Deno.writeTextFile(filepath, source);
 }
