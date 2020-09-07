@@ -2,19 +2,19 @@ import {
   green,
   red,
   yellow,
-} from "https://deno.land/std/fmt/colors.ts";
+} from "https://deno.land/std@0.67.0/fmt/colors.ts";
 
 import {
   parse,
-} from "https://deno.land/std/flags/mod.ts";
+} from "https://deno.land/std@0.67.0/flags/mod.ts";
 
 import {
   serve,
-} from "https://deno.land/std/http/server.ts";
+} from "https://deno.land/std@0.67.0/http/server.ts";
 
 import {
   serveFile,
-} from "https://deno.land/std/http/file_server.ts";
+} from "https://deno.land/std@0.67.0/http/file_server.ts";
 
 import {
   browse,
