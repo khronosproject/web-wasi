@@ -26,66 +26,15 @@ const options = parse(Deno.args, {
   },
 });
 
-const ignore = [
-  "tests/std_fs_create_dir_absolute.wasm",
-  "tests/std_fs_create_dir_relative.wasm",
-  "tests/std_fs_file_create_absolute.wasm",
-  "tests/std_fs_file_create_relative.wasm",
-  "tests/std_fs_file_metadata_absolute.wasm",
-  "tests/std_fs_file_metadata_relative.wasm",
-  "tests/std_fs_file_seek_absolute.wasm",
-  "tests/std_fs_file_seek_relative.wasm",
-  "tests/std_fs_file_set_len_absolute.wasm",
-  "tests/std_fs_file_set_len_relative.wasm",
-  "tests/std_fs_file_sync_all_absolute.wasm",
-  "tests/std_fs_file_sync_all_relative.wasm",
-  "tests/std_fs_file_sync_data_absolute.wasm",
-  "tests/std_fs_file_sync_data_relative.wasm",
-  "tests/std_fs_hard_link_absolute.wasm",
-  "tests/std_fs_hard_link_relative.wasm",
-  "tests/std_fs_metadata_absolute.wasm",
-  "tests/std_fs_metadata_relative.wasm",
-  "tests/std_fs_read_absolute.wasm",
-  "tests/std_fs_read_dir_absolute.wasm",
-  "tests/std_fs_read_dir_relative.wasm",
-  "tests/std_fs_read_relative.wasm",
-  "tests/std_fs_remove_dir_all_absolute.wasm",
-  "tests/std_fs_remove_dir_all_relative.wasm",
-  "tests/std_fs_rename_absolute.wasm",
-  "tests/std_fs_rename_relative.wasm",
-  "tests/std_fs_symlink_metadata_absolute.wasm",
-  "tests/std_fs_symlink_metadata_relative.wasm",
-  "tests/std_fs_write_absolute.wasm",
-  "tests/std_fs_write_relative.wasm",
-  "tests/std_io_stderr.wasm",
-  "tests/std_io_stdin.wasm",
-  "tests/std_io_stdout.wasm",
-  "tests/std_process_exit.wasm",
-  "tests/wasi_clock_res_get_monotonic.wasm",
-  "tests/wasi_clock_res_get_process.wasm",
-  "tests/wasi_clock_res_get_realtime.wasm",
-  "tests/wasi_clock_res_get_thread.wasm",
-  "tests/wasi_clock_time_get_monotonic.wasm",
-  "tests/wasi_clock_time_get_process.wasm",
-  "tests/wasi_clock_time_get_realtime.wasm",
-  "tests/wasi_clock_time_get_thread.wasm",
-  "tests/wasi_fd_write_file.wasm",
-  "tests/wasi_fd_write_stderr.wasm",
-  "tests/wasi_fd_write_stdout.wasm",
-  "tests/wasi_proc_exit_one.wasm",
-  "tests/wasi_proc_exit_zero.wasm",
+const tests = [
+  "tests/std_env_args_none.wasm",
+  "tests/std_env_args_some.wasm",
+  "tests/std_env_vars_none.wasm",
+  "tests/std_env_vars_some.wasm",
+  "tests/wasi_random_get.wasm",
 ];
 
-const manifest: { [key: string]: unknown } = {};
-for await (const entry of Deno.readDir("tests")) {
-  if (!entry.name.endsWith(".wasm")) {
-    continue;
-  }
-
-  const name = `tests/${entry.name}`;
-  const path = name.replace(/\.wasm$/, ".json");
-  manifest[name] = JSON.parse(await Deno.readTextFile(path));
-}
+const ignore: string[] = [];
 
 const server = serve({ port: 8080 });
 
@@ -117,7 +66,7 @@ for await (const request of server) {
       }
 
       case "/runner.js": {
-        await request.respond(await serveRunner(manifest, ignore));
+        await request.respond(await serveRunner(tests, ignore));
         break;
       }
 
@@ -164,7 +113,7 @@ for await (const request of server) {
     console.error(request.url, error);
   }
 
-  const pending = Object.keys(manifest).length -
+  const pending = tests.length -
     result.passed -
     result.failed -
     result.ignored;
@@ -219,7 +168,7 @@ async function serveIndex() {
   };
 }
 
-async function serveRunner(manifest: unknown, ignore: string[]) {
+async function serveRunner(tests: string[], ignore: string[]) {
   const headers = new Headers({
     "Content-Type": "application/javascript",
   });
@@ -227,7 +176,7 @@ async function serveRunner(manifest: unknown, ignore: string[]) {
   const body = `
   import Context from "/lib/wasi_snapshot_preview1.js";
 
-  const manifest = ${JSON.stringify(manifest)};
+  const tests = ${JSON.stringify(tests)};
   const ignore = ${JSON.stringify(ignore)};
 
   async function post(body) {
@@ -242,8 +191,10 @@ async function serveRunner(manifest: unknown, ignore: string[]) {
   };
 
   window.onload = async function() {
-    const entries = Object.entries(manifest).sort();
-    for (const [pathname, options] of entries) {
+    for (const pathname of tests) {
+      const optionsRequest = await fetch(pathname.replace('.wasm', '.json'));
+      const options = await optionsRequest.json();
+
       await post({
 	type: "test",
 	name: pathname,
