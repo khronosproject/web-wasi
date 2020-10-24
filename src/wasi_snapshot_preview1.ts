@@ -319,7 +319,33 @@ export default class Context {
         id: number,
         resolution_out: number,
       ): number => {
-        return ERRNO_NOSYS;
+        const memory_view = new DataView(this.memory.buffer);
+
+        switch (id) {
+          case CLOCKID_REALTIME: {
+            const resolution = BigInt(1e6);
+
+            memory_view.setBigUint64(
+              resolution_out,
+              resolution,
+              true,
+            );
+            break;
+          }
+
+          case CLOCKID_MONOTONIC:
+          case CLOCKID_PROCESS_CPUTIME_ID:
+          case CLOCKID_THREAD_CPUTIME_ID: {
+            const resolution = BigInt(1e3);
+            memory_view.setBigUint64(resolution_out, resolution, true);
+            break;
+          }
+
+          default:
+            return ERRNO_INVAL;
+        }
+
+        return ERRNO_SUCCESS;
       }),
 
       clock_time_get: syscall((
