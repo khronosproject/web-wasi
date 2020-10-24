@@ -27,10 +27,8 @@ const options = parse(Deno.args, {
 });
 
 const tests = [
-  "tests/std_env_args_none.wasm",
-  "tests/std_env_args_some.wasm",
-  "tests/std_env_vars_none.wasm",
-  "tests/std_env_vars_some.wasm",
+  "tests/std_env_args.wasm",
+  "tests/std_env_vars.wasm",
   "tests/wasi_random_get.wasm",
 ];
 
