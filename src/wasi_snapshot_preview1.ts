@@ -353,7 +353,33 @@ export default class Context {
         precision: bigint,
         time_out: number,
       ): number => {
-        return ERRNO_NOSYS;
+        const memory_view = new DataView(this.memory.buffer);
+
+        switch (id) {
+          case CLOCKID_REALTIME: {
+            const time = BigInt(Date.now()) * BigInt(1e6);
+            memory_view.setBigUint64(time_out, time, true);
+            break;
+          }
+
+          case CLOCKID_MONOTONIC:
+          case CLOCKID_PROCESS_CPUTIME_ID:
+          case CLOCKID_THREAD_CPUTIME_ID: {
+            const t = performance.now();
+            const s = Math.trunc(t);
+            const ms = Math.floor((t - s) * 1e3);
+
+            const time = BigInt(s) * BigInt(1e9) + BigInt(ms) * BigInt(1e6);
+
+            memory_view.setBigUint64(time_out, time, true);
+            break;
+          }
+
+          default:
+            return ERRNO_INVAL;
+        }
+
+        return ERRNO_SUCCESS;
       }),
 
       fd_advise: syscall((

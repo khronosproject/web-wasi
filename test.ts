@@ -30,6 +30,7 @@ const tests = [
   "tests/std_env_args.wasm",
   "tests/std_env_vars.wasm",
   "tests/wasi_clock_res_get.wasm",
+  "tests/wasi_clock_time_get.wasm",
   "tests/wasi_random_get.wasm",
 ];
 
