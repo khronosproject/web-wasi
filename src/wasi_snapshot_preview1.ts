@@ -224,9 +224,14 @@ function syscall(target: Function): Function {
   };
 }
 
+export interface Writer {
+  write(data: Uint8Array): number;
+}
+
 export interface ContextOptions {
   args?: string[];
   env?: { [key: string]: string | undefined };
+  stderr: Writer;
   memory?: WebAssembly.Memory;
 }
 
@@ -236,12 +241,19 @@ export type ContextExports = Record<string, Function>;
 export default class Context {
   args: string[];
   env: { [key: string]: string | undefined };
+  stderr: Writer;
   memory: WebAssembly.Memory;
   exports: ContextExports;
 
   constructor(options: ContextOptions) {
     this.args = options.args ?? [];
     this.env = options.env ?? {};
+    this.stderr = options.stderr ?? {
+      write(data: Uint8Array): number {
+        return data.byteLength;
+      },
+    };
+
     this.memory = options.memory!;
 
     this.exports = {
@@ -557,7 +569,28 @@ export default class Context {
         iovs_len: number,
         nwritten_out: number,
       ): number => {
-        return ERRNO_NOSYS;
+        const memory_view = new DataView(this.memory.buffer);
+
+        let nwritten = 0;
+        for (let i = 0; i < iovs_len; i++) {
+          const data_ptr = memory_view.getUint32(iovs_ptr, true);
+          iovs_ptr += 4;
+
+          const data_len = memory_view.getUint32(iovs_ptr, true);
+          iovs_ptr += 4;
+
+          const data = new Uint8Array(
+            this.memory.buffer,
+            data_ptr,
+            data_len,
+          );
+
+          nwritten += this.stderr.write(data) as number;
+        }
+
+        memory_view.setUint32(nwritten_out, nwritten, true);
+
+        return ERRNO_SUCCESS;
       }),
 
       path_create_directory: syscall((
