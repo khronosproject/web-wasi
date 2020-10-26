@@ -198,12 +198,24 @@ const SDFLAGS_WR = 0x0002;
 
 const PREOPENTYPE_DIR = 0;
 
+export class ExitStatus {
+  readonly code: number;
+
+  constructor(code: number) {
+    this.code = code;
+  }
+}
+
 // deno-lint-ignore ban-types
 function syscall(target: Function): Function {
   return function (...args: unknown[]): number {
     try {
       return target(...args);
     } catch (err) {
+      if (err instanceof ExitStatus) {
+        throw err;
+      }
+
       switch (err.name) {
         default:
           return ERRNO_INVAL;
@@ -663,8 +675,8 @@ export default class Context {
 
       proc_exit: syscall((
         rval: number,
-      ): number => {
-        return ERRNO_NOSYS;
+      ): never => {
+        throw new ExitStatus(rval);
       }),
 
       proc_raise: syscall((

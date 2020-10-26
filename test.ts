@@ -29,8 +29,10 @@ const options = parse(Deno.args, {
 const tests = [
   "tests/std_env_args.wasm",
   "tests/std_env_vars.wasm",
+  "tests/std_process_exit.wasm",
   "tests/wasi_clock_res_get.wasm",
   "tests/wasi_clock_time_get.wasm",
+  "tests/wasi_proc_exit.wasm",
   "tests/wasi_random_get.wasm",
 ];
 
@@ -174,7 +176,9 @@ async function serveRunner(tests: string[], ignore: string[]) {
   });
 
   const body = `
-  import Context from "/lib/wasi_snapshot_preview1.js";
+  import Context, {
+    ExitStatus,
+  } from "/lib/wasi_snapshot_preview1.js";
 
   const tests = ${JSON.stringify(tests)};
   const ignore = ${JSON.stringify(ignore)};
@@ -223,7 +227,16 @@ async function serveRunner(tests: string[], ignore: string[]) {
 	});
 
 	context.memory = instance.exports.memory;
-	instance.exports._start();
+
+	try {
+	  instance.exports._start();
+	} catch (err) {
+	  if (err instanceof ExitStatus) {
+	    console.assert(err.code == options.exitCode);
+	  } else {
+	    throw err;
+	  }
+	}
 
 	await post({
 	  type: "pass",
