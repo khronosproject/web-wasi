@@ -231,6 +231,7 @@ export interface Writer {
 export interface ContextOptions {
   args?: string[];
   env?: { [key: string]: string | undefined };
+  stdout?: Writer;
   stderr: Writer;
   memory?: WebAssembly.Memory;
 }
@@ -241,6 +242,7 @@ export type ContextExports = Record<string, Function>;
 export default class Context {
   args: string[];
   env: { [key: string]: string | undefined };
+  stdout: Writer;
   stderr: Writer;
   memory: WebAssembly.Memory;
   exports: ContextExports;
@@ -248,6 +250,11 @@ export default class Context {
   constructor(options: ContextOptions) {
     this.args = options.args ?? [];
     this.env = options.env ?? {};
+    this.stdout = options.stdout ?? {
+      write(data: Uint8Array): number {
+        return data.byteLength;
+      },
+    };
     this.stderr = options.stderr ?? {
       write(data: Uint8Array): number {
         return data.byteLength;
@@ -569,6 +576,20 @@ export default class Context {
         iovs_len: number,
         nwritten_out: number,
       ): number => {
+        let handle;
+        switch (fd) {
+          case 1:
+            handle = this.stdout;
+            break;
+
+          case 2:
+            handle = this.stderr;
+            break;
+
+          default:
+            return ERRNO_BADF;
+        }
+
         const memory_view = new DataView(this.memory.buffer);
 
         let nwritten = 0;
@@ -585,7 +606,7 @@ export default class Context {
             data_len,
           );
 
-          nwritten += this.stderr.write(data) as number;
+          nwritten += handle.write(data) as number;
         }
 
         memory_view.setUint32(nwritten_out, nwritten, true);

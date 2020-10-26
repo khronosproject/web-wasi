@@ -33,6 +33,7 @@ const tests = [
   "tests/wasi_clock_res_get.wasm",
   "tests/wasi_clock_time_get.wasm",
   "tests/wasi_fd_write_stderr.wasm",
+  "tests/wasi_fd_write_stdout.wasm",
   "tests/wasi_proc_exit.wasm",
   "tests/wasi_random_get.wasm",
 ];
@@ -215,11 +216,18 @@ async function serveRunner(tests: string[], ignore: string[]) {
       }
 
       try {
+	const stdout = [];
 	const stderr = [];
 
 	const context = new Context({
 	  args: [pathname].concat(options.args),
 	  env: options.env,
+	  stdout: {
+	    write: (data) => {
+	      stdout.push(new TextDecoder().decode(data));
+	      return data.byteLength;
+	    },
+	  },
 	  stderr: {
 	    write: (data) => {
 	      stderr.push(new TextDecoder().decode(data));
@@ -245,6 +253,10 @@ async function serveRunner(tests: string[], ignore: string[]) {
 	  } else {
 	    throw err;
 	  }
+	}
+
+	if (stdout.join('') != (options.stdout ?? "")) {
+	  throw new Error('stdout: ' + stdout.join(''));
 	}
 
 	if (stderr.join('') != (options.stderr ?? "")) {
