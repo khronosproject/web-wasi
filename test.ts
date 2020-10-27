@@ -29,6 +29,7 @@ const options = parse(Deno.args, {
 const tests = [
   "tests/std_env_args.wasm",
   "tests/std_env_vars.wasm",
+  "tests/std_io_stdin.wasm",
   "tests/std_process_exit.wasm",
   "tests/wasi_clock_res_get.wasm",
   "tests/wasi_clock_time_get.wasm",
@@ -216,12 +217,22 @@ async function serveRunner(tests: string[], ignore: string[]) {
       }
 
       try {
+	let stdin = new TextEncoder().encode(options.stdin ?? "");
 	const stdout = [];
 	const stderr = [];
 
 	const context = new Context({
 	  args: [pathname].concat(options.args),
 	  env: options.env,
+	  stdin: {
+	    read: (data) => {
+              const chunk = stdin.subarray(0, data.byteLength);
+              data.set(chunk);
+              stdin = stdin.subarray(chunk.byteLength);
+
+              return chunk.byteLength;
+	    },
+	  },
 	  stdout: {
 	    write: (data) => {
 	      stdout.push(new TextDecoder().decode(data));
