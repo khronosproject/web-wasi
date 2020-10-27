@@ -224,6 +224,10 @@ function syscall(target: Function): Function {
   };
 }
 
+export interface Reader {
+  read(data: Uint8Array): number;
+}
+
 export interface Writer {
   write(data: Uint8Array): number;
 }
@@ -231,6 +235,7 @@ export interface Writer {
 export interface ContextOptions {
   args?: string[];
   env?: { [key: string]: string | undefined };
+  stdin?: Reader;
   stdout?: Writer;
   stderr?: Writer;
   memory?: WebAssembly.Memory;
@@ -242,6 +247,7 @@ export type ContextExports = Record<string, Function>;
 export default class Context {
   args: string[];
   env: { [key: string]: string | undefined };
+  stdin: Reader;
   stdout: Writer;
   stderr: Writer;
   memory: WebAssembly.Memory;
@@ -250,6 +256,12 @@ export default class Context {
   constructor(options: ContextOptions) {
     this.args = options.args ?? [];
     this.env = options.env ?? {};
+    this.stdin = options.stdin ?? {
+      read(data: Uint8Array): number {
+        return 0;
+      },
+    };
+
     this.stdout = options.stdout ?? {
       write(data: Uint8Array): number {
         return data.byteLength;
@@ -528,7 +540,38 @@ export default class Context {
         iovs_len: number,
         nread_out: number,
       ): number => {
-        return ERRNO_NOSYS;
+        let handle;
+        switch (fd) {
+          case 0:
+            handle = this.stdin;
+            break;
+
+          default:
+            return ERRNO_BADF;
+        }
+
+        const memory_view = new DataView(this.memory.buffer);
+
+        let nread = 0;
+        for (let i = 0; i < iovs_len; i++) {
+          const data_ptr = memory_view.getUint32(iovs_ptr, true);
+          iovs_ptr += 4;
+
+          const data_len = memory_view.getUint32(iovs_ptr, true);
+          iovs_ptr += 4;
+
+          const data = new Uint8Array(
+            this.memory.buffer,
+            data_ptr,
+            data_len,
+          );
+
+          nread += handle.read(data) as number;
+        }
+
+        memory_view.setUint32(nread_out, nread, true);
+
+        return ERRNO_SUCCESS;
       }),
 
       fd_readdir: syscall((
