@@ -151,6 +151,18 @@ window.onload = async function() {
   }
 };`;
 
+const index = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title></title>
+</head>
+<body>
+<script type="module">${module}</script>
+</body>
+</html>`;
+
 const server = serve({ port: 8080 });
 
 const browser = browse({
@@ -176,7 +188,7 @@ for await (const request of server) {
     switch (request.url) {
       case "/":
       case "/index.html": {
-        await request.respond(await serveIndex());
+        await request.respond({ body: index });
         break;
       }
 
@@ -258,22 +270,4 @@ function print(text: string, noNewLine = false) {
   if (!noNewLine) {
     Deno.stdout.writeSync(encoder.encode("\n"));
   }
-}
-
-async function serveIndex() {
-  const body = `
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-  <meta charset="utf-8">
-  <title></title>
-  </head>
-  <body>
-  <script type="module">${module}</script>
-  </body>
-  </html>`;
-
-  return {
-    body,
-  };
 }
