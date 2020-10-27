@@ -232,7 +232,7 @@ export interface ContextOptions {
   args?: string[];
   env?: { [key: string]: string | undefined };
   stdout?: Writer;
-  stderr: Writer;
+  stderr?: Writer;
   memory?: WebAssembly.Memory;
 }
 
