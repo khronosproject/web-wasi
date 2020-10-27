@@ -41,6 +41,116 @@ const tests = [
 
 const ignore: string[] = [];
 
+const module = `
+import Context, {
+  ExitStatus,
+} from "/lib/wasi_snapshot_preview1.js";
+
+const tests = ${JSON.stringify(tests)};
+const ignore = ${JSON.stringify(ignore)};
+
+async function post(body) {
+  return fetch("http://localhost:8080/test.json", {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+window.onerror = async function() {
+  write("error");
+};
+
+window.onload = async function() {
+  for (const pathname of tests) {
+    const optionsRequest = await fetch(pathname.replace('.wasm', '.json'));
+    const options = await optionsRequest.json();
+
+    await post({
+      type: "test",
+      name: pathname,
+    });
+
+    if (ignore.includes(pathname)) {
+      await post({
+	type: "skip",
+	name: pathname,
+      });
+
+      continue;
+    }
+
+    try {
+      let stdin = new TextEncoder().encode(options.stdin ?? "");
+      const stdout = [];
+      const stderr = [];
+
+      const context = new Context({
+	args: [pathname].concat(options.args),
+	env: options.env,
+        stdin: {
+	  read: (data) => {
+	     const chunk = stdin.subarray(0, data.byteLength);
+	     data.set(chunk);
+	     stdin = stdin.subarray(chunk.byteLength);
+
+	     return chunk.byteLength;
+	  },
+	},
+	stdout: {
+	  write: (data) => {
+	    stdout.push(new TextDecoder().decode(data));
+	    return data.byteLength;
+	  },
+	},
+	stderr: {
+	  write: (data) => {
+	    stderr.push(new TextDecoder().decode(data));
+	    return data.byteLength;
+	  },
+	},
+      });
+
+      const request = await fetch(pathname);
+      const binary = await request.arrayBuffer();
+      const module = await WebAssembly.compile(binary);
+      const instance = await WebAssembly.instantiate(module, {
+	wasi_snapshot_preview1: context.exports,
+      });
+
+      context.memory = instance.exports.memory;
+
+      try {
+	instance.exports._start();
+      } catch (err) {
+	if (err instanceof ExitStatus) {
+	  console.assert(err.code == options.exitCode);
+	} else {
+	  throw err;
+	}
+      }
+
+      if (stdout.join('') != (options.stdout ?? "")) {
+	throw new Error('stdout: ' + stdout.join(''));
+      }
+
+      if (stderr.join('') != (options.stderr ?? "")) {
+	throw new Error('stderr: ' + stderr.join(''));
+      }
+
+      await post({
+	type: "pass",
+	name: pathname,
+      });
+    } catch (error) {
+      await post({
+	type: "fail",
+	name: pathname,
+	error: error.stack,
+      });
+    }
+  }
+};`;
+
 const server = serve({ port: 8080 });
 
 const browser = browse({
@@ -67,11 +177,6 @@ for await (const request of server) {
       case "/":
       case "/index.html": {
         await request.respond(await serveIndex());
-        break;
-      }
-
-      case "/runner.js": {
-        await request.respond(await serveRunner(tests, ignore));
         break;
       }
 
@@ -164,132 +269,11 @@ async function serveIndex() {
   <title></title>
   </head>
   <body>
-  <script type="module" src="/runner.js"></script>
+  <script type="module">${module}</script>
   </body>
   </html>`;
 
   return {
-    body,
-  };
-}
-
-async function serveRunner(tests: string[], ignore: string[]) {
-  const headers = new Headers({
-    "Content-Type": "application/javascript",
-  });
-
-  const body = `
-  import Context, {
-    ExitStatus,
-  } from "/lib/wasi_snapshot_preview1.js";
-
-  const tests = ${JSON.stringify(tests)};
-  const ignore = ${JSON.stringify(ignore)};
-
-  async function post(body) {
-    return fetch("http://localhost:8080/test.json", {
-      method: 'POST',
-    body: JSON.stringify(body),
-    });
-  }
-
-  window.onerror = async function() {
-    write("error");
-  };
-
-  window.onload = async function() {
-    for (const pathname of tests) {
-      const optionsRequest = await fetch(pathname.replace('.wasm', '.json'));
-      const options = await optionsRequest.json();
-
-      await post({
-	type: "test",
-	name: pathname,
-      });
-
-      if (ignore.includes(pathname)) {
-	await post({
-	  type: "skip",
-	  name: pathname,
-	});
-
-	continue;
-      }
-
-      try {
-	let stdin = new TextEncoder().encode(options.stdin ?? "");
-	const stdout = [];
-	const stderr = [];
-
-	const context = new Context({
-	  args: [pathname].concat(options.args),
-	  env: options.env,
-	  stdin: {
-	    read: (data) => {
-              const chunk = stdin.subarray(0, data.byteLength);
-              data.set(chunk);
-              stdin = stdin.subarray(chunk.byteLength);
-
-              return chunk.byteLength;
-	    },
-	  },
-	  stdout: {
-	    write: (data) => {
-	      stdout.push(new TextDecoder().decode(data));
-	      return data.byteLength;
-	    },
-	  },
-	  stderr: {
-	    write: (data) => {
-	      stderr.push(new TextDecoder().decode(data));
-	      return data.byteLength;
-	    },
-	  },
-	});
-
-	const request = await fetch(pathname);
-	const binary = await request.arrayBuffer();
-	const module = await WebAssembly.compile(binary);
-	const instance = await WebAssembly.instantiate(module, {
-	  wasi_snapshot_preview1: context.exports,
-	});
-
-	context.memory = instance.exports.memory;
-
-	try {
-	  instance.exports._start();
-	} catch (err) {
-	  if (err instanceof ExitStatus) {
-	    console.assert(err.code == options.exitCode);
-	  } else {
-	    throw err;
-	  }
-	}
-
-	if (stdout.join('') != (options.stdout ?? "")) {
-	  throw new Error('stdout: ' + stdout.join(''));
-	}
-
-	if (stderr.join('') != (options.stderr ?? "")) {
-	  throw new Error('stderr: ' + stderr.join(''));
-	}
-
-	await post({
-	  type: "pass",
-	  name: pathname,
-	});
-      } catch (error) {
-	await post({
-	  type: "fail",
-	  name: pathname,
-	  error: error.stack,
-	});
-      }
-    }
-  };`;
-
-  return {
-    headers,
     body,
   };
 }
